@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
+
+import { cn } from "./lib/utils";
 
 type InternalMessage = {
-  from: "sytem" | "user"
+  from: "system" | "user"
   content: string
-  type: "text" | "answer"
+  type: "text" | "answer" | "error"
   answeringId?: string
 }
 
@@ -19,6 +21,10 @@ function Chat() {
   const ws = useRef<WebSocket | null>(null);
   const [messages, setMessages] = useState<InternalMessage[]>([]);
   const [input, setInput] = useState<string>("");
+
+  const hasError = useMemo(() => {
+    return messages.some((message) => message.type === "error");
+  }, [messages])
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(event.target.value);
@@ -50,7 +56,15 @@ function Chat() {
     console.log("WebSocket connection opened");
   }
 
-  const handleWebSocketClose = () => {
+  const handleWebSocketClose = (event: CloseEvent) => {
+    if (event.reason === "connection_already_open") {
+      const errorMessage: InternalMessage = {
+        from: "system",
+        content: "Uma conexão já está aberta. Tente novamente mais tarde.",
+        type: "error",
+      }
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
+    }
     console.log("WebSocket connection closed");
   }
 
@@ -111,7 +125,13 @@ function Chat() {
             {
               messages.map((message, index) => (
                 <div key={index} className={`mb-4 ${message.from === "user" ? "text-right" : "text-left"}`}>
-                  <div className={`inline-block p-2 rounded-lg ${message.from === "user" ? "bg-blue-500 text-white" : "bg-gray-200 text-black"}`}>
+                  <div
+                    className={cn(
+                      "inline-block p-2 rounded-lg",
+                      message.from === "user" ? "bg-blue-500 text-white" : "bg-gray-200 text-black",
+                      message.type === "error" ? "bg-red-400 text-white" : "",
+                    )}
+                  >
                     {message.content}
                   </div>
                 </div>
@@ -124,6 +144,7 @@ function Chat() {
           <textarea
             placeholder="Digite sua mensagem..."
             className="w-full p-2 border border-gray-300 rounded-lg mt-4 resize-none"
+            disabled={hasError}
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}

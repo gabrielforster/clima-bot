@@ -36,7 +36,8 @@ const server = app.listen(PORT, () => console.info("server running"))
 const wss = new Server({ server })
 wss.on("connection", (ws) => {
   if (connection && connection.ws.readyState === ws.OPEN) {
-    ws.close(1000, "Another connection is already open")
+    console.warn("WebSocket connection already open, closing new connection")
+    ws.close(3001, "connection_already_open")
     return
   }
 
