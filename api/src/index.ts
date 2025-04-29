@@ -1,60 +1,96 @@
+import { randomUUID } from "node:crypto";
+import express, { Request, Response } from "express";
+import helmet from "helmet";
+import cors from "cors";
+import { Server } from "ws";
 
-import express, { Request, Response } from "express"
-import helmet from "helmet"
-import cors from "cors"
-import { Server } from "ws"
+import {
+  chatController,
+  handleNewConnection,
+  handleWebSocketMessage,
+} from "./controllers/chat.controller";
+import { InternalWebSocket } from "../lib/internal-ws";
+import { ChatRepository } from "./repositories/chat.repository";
+import { ConnectionManager } from "./connections/manager";
 
-import { chatController, handleNewConnection, handleWebSocketMessage } from "./controllers/chat.controller"
-import { InternalWebSocket } from "../lib/internal-ws"
-import { ChatRepository } from "./repositories/chat.repository"
+const connectionManager = new ConnectionManager();
 
-let connection: InternalWebSocket | null = null
-const chatRepo = new ChatRepository()
+const app = express();
+const PORT = process.env.PORT ?? "3000";
 
-const app = express()
-const PORT = process.env.PORT ?? "3000"
-
-app.use(cors())
-app.use(express.json())
-app.use(helmet())
+app.use(cors());
+app.use(express.json());
+app.use(helmet());
 
 app.use((req: Request, res: Response, next) => {
-  const start = Date.now()
+  const start = Date.now();
   res.on("finish", () => {
-    const duration = Date.now() - start
-    console.info(`${req.method} ${req.path} ${res.statusCode} - ${duration}ms`)
-  })
-  next()
-})
+    const duration = Date.now() - start;
+    console.info(`${req.method} ${req.path} ${res.statusCode} - ${duration}ms`);
+  });
+  next();
+});
 
 app.get("/health", (req, res) => {
-  return res.status(200).json({ status: "ok", message: "Server is healthy" })
-})
+  return res.status(200).json({
+    status: "ok",
+    message: "Server is healthy",
+    connections: connectionManager.getConnectionsCount(),
+  });
+});
 
-app.use("/chat", chatController)
+app.use("/chat", chatController);
+app.get("/connections", (req, res) => {
+  const connections = connectionManager.getAllConnections().map((conn) => ({
+    currentFlow: conn.flowManager.getCurrentFlow(),
+    messagesCount: conn.chatRepo.getMessages().length,
+  }));
 
-const server = app.listen(PORT, () => console.info("server running"))
+  return res.json({
+    totalConnections: connectionManager.getConnectionsCount(),
+    connections,
+  });
+});
 
-const wss = new Server({ server })
+const server = app.listen(PORT, () => console.info("server running"));
+
+const wss = new Server({ server });
 wss.on("connection", async (ws) => {
-  if (connection && connection.ws.readyState === ws.OPEN) {
-    console.warn("WebSocket connection already open, closing new connection");
-    ws.close(3001, "connection_already_open");
-    return;
-  }
-
+  const connectionId = randomUUID();
   const internalWebSocket = new InternalWebSocket(ws);
-  connection = internalWebSocket;
+  const chatRepo = new ChatRepository();
 
-  const flowManager = await handleNewConnection(connection, { chatRepo });
+  const flowManager = await handleNewConnection(internalWebSocket, { chatRepo });
 
-  ws.on("message", (message) =>
-    handleWebSocketMessage(connection!, message, { chatRepo, flowManager })
+  connectionManager.addConnection(connectionId, {
+    ws: internalWebSocket,
+    flowManager,
+    chatRepo,
+  });
+
+  console.info(
+    `New connection established (${connectionId}). Total connections: ${connectionManager.getConnectionsCount()}`
   );
 
+  ws.on("message", (message) => {
+    const connection = connectionManager.getConnection(connectionId);
+    if (connection) {
+      handleWebSocketMessage(connection.ws, message, {
+        chatRepo: connection.chatRepo,
+        flowManager: connection.flowManager,
+      });
+    }
+  });
+
   ws.on("close", () => {
-    connection?.ws.close();
-    connection = null;
-    console.info("WebSocket connection closed");
+    connectionManager.removeConnection(connectionId);
+    console.info(
+      `Connection closed (${connectionId}). Total connections: ${connectionManager.getConnectionsCount()}`
+    );
+  });
+
+  ws.on("error", (error) => {
+    console.error(`WebSocket error on connection ${connectionId}:`, error);
+    connectionManager.removeConnection(connectionId);
   });
 });

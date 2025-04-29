@@ -7,6 +7,7 @@ export type FlowContext = {
   ws: InternalWebSocket;
   chatRepo: ChatRepository;
   currentFlow: string;
+  connectionId: string;
 };
 
 export type FlowStep = {
