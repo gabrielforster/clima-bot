@@ -1,4 +1,5 @@
 
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { RawData } from "ws";
 import { InternalWebSocket } from "../../lib/internal-ws";
@@ -37,11 +38,14 @@ export async function handleNewConnection(
   ws: InternalWebSocket,
   { chatRepo }: { chatRepo: ChatRepository }
 ) {
+  const connectionId = randomUUID();
+
   const flowManager = new FlowManager(
     {
       ws,
       chatRepo,
       currentFlow: "mainFlow",
+      connectionId,
     },
     handleInvalidMessage
   );
@@ -60,4 +64,3 @@ export async function handleNewConnection(
 
   return flowManager;
 }
-
