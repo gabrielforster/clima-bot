@@ -139,17 +139,17 @@ function Chat() {
 
   return (
     <main className="flex h-screen">
-      <aside className="w-1/4 bg-gray-200 p-4">
-
-        <header>
-          <button className="bg-blue-500 text-white px-4 py-2 w-full rounded-lg">
-            Criar novo chat
-          </button>
-        </header>
-
-        <section>
-        </section>
-      </aside>
+      {/*
+        <aside className="w-1/4 bg-gray-200 p-4">
+          <header>
+            <button className="bg-blue-500 text-white px-4 py-2 w-full rounded-lg">
+              Criar novo chat
+            </button>
+          </header>
+          <section>
+          </section>
+        </aside>
+      */}
 
       <section className="flex-1 p-4">
         <div className="bg-white shadow-md rounded-lg p-4 flex flex-col h-full">
@@ -167,7 +167,7 @@ function Chat() {
                 >
                   {message.answeringId && (
                     <div className="text-sm text-gray-500 mt-1">
-                      Resposta para: {message.answeringId}
+                      Resposta para: {messages.find(m => m.id === message.answeringId)?.content}
                     </div>
                   )}
                   <div
@@ -175,17 +175,21 @@ function Chat() {
                       "inline-block p-2 rounded-lg",
                       message.from === "user" ? "bg-blue-500 text-white" : "bg-gray-200 text-black",
                       message.type === "error" ? "bg-red-400 text-white" : "",
+                      message.type === "question" ? "border border-gray-300 p-4 rounded-lg shadow-sm" : ""
                     )}
                   >
                     {message.content}
                   </div>
                   {
                     message.type === "question" && message.answers && message.answers.length > 0 && (
-                      <div className="mt-2 max-w-1/2">
+                      <div className="mt-2">
                         {message.answers.map((answer, answerIndex) => (
                           <div
                             key={answerIndex}
-                            className="bg-gray-300 p-2 rounded-lg mb-2 flex items-center gap-2 cursor-pointer"
+                            className={cn(
+                              "bg-gray-300 p-3 rounded-lg mb-2 flex items-center gap-2 hover:bg-gray-400 transition-colors",
+                              lastMessage.id === message.id && "cursor-pointer"
+                            )}
                             onClick={() => {
                               if (lastMessage.id !== message.id) {
                                 return
@@ -196,7 +200,7 @@ function Chat() {
                           >
                             {
                               lastMessage.id === message.id && (
-                                <MousePointerClick className="text-color-gray-300 size-4" />
+                                <MousePointerClick className="text-gray-600 size-4" />
                               )
                             }
                             <span>{answer.content}</span>
@@ -225,3 +229,4 @@ function Chat() {
     </main>
   )
 }
+
