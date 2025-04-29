@@ -117,6 +117,8 @@ function Chat() {
                 </div>
               ))
             }
+
+            <div ref={(el) => { if (el) el.scrollIntoView({ behavior: "smooth" }) }} />
           </div>
 
           <textarea
