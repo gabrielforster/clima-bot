@@ -38,22 +38,23 @@ const server = app.listen(PORT, () => console.info("server running"))
 const wss = new Server({ server })
 wss.on("connection", async (ws) => {
   if (connection && connection.ws.readyState === ws.OPEN) {
-    console.warn("WebSocket connection already open, closing new connection")
-    ws.close(3001, "connection_already_open")
-    return
+    console.warn("WebSocket connection already open, closing new connection");
+    ws.close(3001, "connection_already_open");
+    return;
   }
 
-  const internalWebSocket = new InternalWebSocket(ws)
-  connection = internalWebSocket
+  const internalWebSocket = new InternalWebSocket(ws);
+  connection = internalWebSocket;
 
-  ws.on("message", (message) => handleWebSocketMessage(connection!, message, { chatRepo }))
+  const flowManager = await handleNewConnection(connection, { chatRepo });
+
+  ws.on("message", (message) =>
+    handleWebSocketMessage(connection!, message, { chatRepo, flowManager })
+  );
 
   ws.on("close", () => {
-    connection?.ws.close()
-    connection = null
-    console.info("WebSocket connection closed")
-  })
-
-  handleNewConnection(connection!, { chatRepo })
-})
-
+    connection?.ws.close();
+    connection = null;
+    console.info("WebSocket connection closed");
+  });
+});
