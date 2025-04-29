@@ -1,3 +1,4 @@
+
 import { Router } from "express";
 import { RawData } from "ws";
 import { InternalWebSocket } from "../../lib/internal-ws";
@@ -24,10 +25,11 @@ export async function handleWebSocketMessage(
     const message = messageSchema.parse(parsedMessage);
 
     const fullMessage = chatRepo.addMessage(message, "user");
+
     await flowManager.handleMessage(fullMessage);
   } catch (err) {
     console.error("Error handling message:", err);
-    await ws.sendMessage({ error: "Invalid message format" });
+    await ws.sendMessage({ type: "error", content: "Invalid message format" });
   }
 }
 
@@ -54,7 +56,7 @@ export async function handleNewConnection(
   );
   await ws.sendMessage(welcomeMsg);
 
-  await flowManager.handleMessage(welcomeMsg);
+  await flowManager.startFlow("mainFlow");
 
   return flowManager;
 }

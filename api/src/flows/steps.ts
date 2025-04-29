@@ -1,13 +1,9 @@
 
-import { FlowStep } from "./flow-manager";
+import { FlowContext, FlowStep } from "./flow-manager";
 import { SimpleMessage } from "../schemas/message";
+import { WeatherService } from "../services/weather";
 
 const MESSAGES = {
-  WELCOME: {
-    type: "text",
-    content: "Boas vindas ao chat!",
-  } as SimpleMessage,
-
   MENU: {
     identifier: "menu",
     type: "question",
@@ -58,10 +54,26 @@ export const weatherFlowSteps: FlowStep[] = [
   {
     async execute(context, message) {
       if (!message) return;
+
+      const weatherService = new WeatherService();
+      const weather = await weatherService.getWeather(message.content);
+
+      if (!weather) {
+        const errorMsg = context.chatRepo.addMessage(
+          {
+            type: "error",
+            content: "Não foi possível obter o clima para esta cidade.",
+          },
+          "system"
+        );
+        await context.ws.sendMessage(errorMsg);
+        return;
+      }
+
       const weatherMsg = context.chatRepo.addMessage(
         {
           type: "text",
-          content: `Clima em ${message.content}: 25ºC, ensolarado`,
+          content: `Clima em ${message.content}: ${weather.temperature}ºC, ${weather.condition}`,
         },
         "system"
       );

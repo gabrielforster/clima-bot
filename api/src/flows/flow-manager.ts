@@ -1,7 +1,7 @@
 
 import { InternalWebSocket } from "../../lib/internal-ws";
 import { ChatRepository } from "../repositories/chat.repository";
-import { Message, SimpleMessage } from "../schemas/message";
+import { Message } from "../schemas/message";
 
 export type FlowContext = {
   ws: InternalWebSocket;
@@ -20,10 +20,20 @@ export class FlowManager {
   constructor(
     private context: FlowContext,
     private readonly invalidMessageHandler: (context: FlowContext) => Promise<void>
-  ) {}
+  ) { }
 
   registerFlow(name: string, steps: FlowStep[]) {
     this.flows[name] = steps;
+  }
+
+  async startFlow(flowName: string) {
+    this.context.currentFlow = flowName;
+    this.currentStepIndex = 1;
+    const flow = this.flows[flowName];
+    if (!flow) {
+      throw new Error(`Flow ${flowName} not found`);
+    }
+    await flow[0].execute(this.context);
   }
 
   async handleMessage(message: Message) {
@@ -45,13 +55,11 @@ export class FlowManager {
       if (answeredMessage.identifier === "menu") {
         switch (message.answerIdentifier) {
           case "clima":
-            this.context.currentFlow = "weatherFlow";
-            this.currentStepIndex = 0;
-            break;
+            await this.startFlow("weatherFlow");
+            return;
           case "exit":
-            this.context.currentFlow = "exitFlow";
-            this.currentStepIndex = 0;
-            break;
+            await this.startFlow("exitFlow");
+            return;
           default:
             await this.invalidMessageHandler(this.context);
             return;
@@ -60,13 +68,17 @@ export class FlowManager {
     }
 
     const currentStep = currentFlow[this.currentStepIndex];
+    if (!currentStep) {
+      await this.invalidMessageHandler(this.context);
+      return;
+    }
+
     await currentStep.execute(this.context, message);
     this.currentStepIndex++;
 
     if (this.currentStepIndex >= currentFlow.length) {
-      this.context.currentFlow = "mainFlow";
-      this.currentStepIndex = 0;
-      await this.flows["mainFlow"][0].execute(this.context);
+      await this.startFlow("mainFlow");
     }
   }
 }
+
