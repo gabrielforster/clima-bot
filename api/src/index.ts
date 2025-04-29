@@ -2,8 +2,12 @@
 import express, { Request, Response } from "express"
 import helmet from "helmet"
 import cors from "cors"
+import { Server } from "ws"
 
-import { chatController } from "./controllers/chat.controller"
+import { chatController, handleWebSocketMessage } from "./controllers/chat.controller"
+import { InternalWebSocket } from "../lib/internal-ws"
+
+let connection: InternalWebSocket | null = null
 
 const app = express()
 const PORT = process.env.PORT ?? "3000"
@@ -21,10 +25,30 @@ app.use((req: Request, res: Response, next) => {
   next()
 })
 
-app.get("/health", (req: Request, res: Response) => {
+app.get("/health", (req, res) => {
   return res.status(200).json({ status: "ok", message: "Server is healthy" })
 })
 
 app.use("/chat", chatController)
 
-app.listen(PORT, () => console.info("server running"))
+const server = app.listen(PORT, () => console.info("server running"))
+
+const wss = new Server({ server })
+wss.on("connection", (ws) => {
+  if (connection && connection.ws.readyState === ws.OPEN) {
+    ws.close(1000, "Another connection is already open")
+    return
+  }
+
+  const internalWebSocket = new InternalWebSocket(ws)
+  connection = internalWebSocket
+
+  ws.on("message", (message) => handleWebSocketMessage(connection!, message))
+
+  ws.on("close", () => {
+    connection?.ws.close()
+    connection = null
+    console.info("WebSocket connection closed")
+  })
+})
+
