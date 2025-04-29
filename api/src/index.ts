@@ -4,10 +4,12 @@ import helmet from "helmet"
 import cors from "cors"
 import { Server } from "ws"
 
-import { chatController, handleWebSocketMessage } from "./controllers/chat.controller"
+import { chatController, handleNewConnection, handleWebSocketMessage } from "./controllers/chat.controller"
 import { InternalWebSocket } from "../lib/internal-ws"
+import { ChatRepository } from "./repositories/chat.repository"
 
 let connection: InternalWebSocket | null = null
+const chatRepo = new ChatRepository()
 
 const app = express()
 const PORT = process.env.PORT ?? "3000"
@@ -34,7 +36,7 @@ app.use("/chat", chatController)
 const server = app.listen(PORT, () => console.info("server running"))
 
 const wss = new Server({ server })
-wss.on("connection", (ws) => {
+wss.on("connection", async (ws) => {
   if (connection && connection.ws.readyState === ws.OPEN) {
     console.warn("WebSocket connection already open, closing new connection")
     ws.close(3001, "connection_already_open")
@@ -44,12 +46,14 @@ wss.on("connection", (ws) => {
   const internalWebSocket = new InternalWebSocket(ws)
   connection = internalWebSocket
 
-  ws.on("message", (message) => handleWebSocketMessage(connection!, message))
+  ws.on("message", (message) => handleWebSocketMessage(connection!, message, { chatRepo }))
 
   ws.on("close", () => {
     connection?.ws.close()
     connection = null
     console.info("WebSocket connection closed")
   })
+
+  handleNewConnection(connection!, { chatRepo })
 })
 

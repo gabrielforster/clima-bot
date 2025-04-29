@@ -1,12 +1,19 @@
 import { useState, useRef, useEffect, useMemo } from "react"
+import { MousePointerClick } from "lucide-react"
 
 import { cn } from "./lib/utils";
 
 type InternalMessage = {
+  id?: string
   from: "system" | "user"
   content: string
-  type: "text" | "answer" | "error"
+  type: "text" | "answer" | "question" | "error"
   answeringId?: string
+  answerIdentifier?: string
+  answers?: {
+    identifier: string
+    content: string
+  }[]
 }
 
 export default function App() {
@@ -26,23 +33,50 @@ function Chat() {
     return messages.some((message) => message.type === "error");
   }, [messages])
 
+  const lastMessage = useMemo(() => {
+    return messages[messages.length - 1];
+  }, [messages])
+
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(event.target.value);
   }
 
+  const sendMessageToWebSocket = (message: InternalMessage) => {
+    if (!ws.current) {
+      console.error("WebSocket connection is not open");
+      return;
+    }
+
+    const messageString = JSON.stringify(message);
+    const messageBuffer = new TextEncoder().encode(messageString);
+    ws.current.send(messageBuffer);
+    setMessages([...messages, message]);
+    setInput("");
+  }
+
   const handleSendMessage = () => {
-    if (ws.current && input) {
+    if (input) {
       const message: InternalMessage = {
         from: "user",
         content: input,
         type: "text",
       }
-      const messageString = JSON.stringify(message);
-      const messageBuffer = new TextEncoder().encode(messageString);
-      ws.current.send(messageBuffer);
-      setMessages([...messages, message]);
-      setInput("");
+      sendMessageToWebSocket(message);
     }
+  }
+
+  const handleAnswerClick = ({ identifier, content }: { identifier: string, content: string }) => {
+    const lastMessage = messages[messages.length - 1];
+
+    const message: InternalMessage = {
+      type: "answer",
+      from: "user",
+      content: content,
+      answeringId: lastMessage.id,
+      answerIdentifier: identifier,
+    }
+
+    sendMessageToWebSocket(message);
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -73,7 +107,7 @@ function Chat() {
   }
 
   const handleWebSocketMessage = (event: MessageEvent<ArrayBuffer>) => {
-    const wsMessage = String.fromCharCode.apply(null, new Uint8Array(event.data));
+    const wsMessage = new TextDecoder().decode(event.data)
     const message: InternalMessage = JSON.parse(wsMessage);
     setMessages((prevMessages) => [...prevMessages, message]);
   }
@@ -124,7 +158,18 @@ function Chat() {
           <div className="overflow-y-auto flex-1">
             {
               messages.map((message, index) => (
-                <div key={index} className={`mb-4 ${message.from === "user" ? "text-right" : "text-left"}`}>
+                <div
+                  key={index}
+                  className={cn(
+                    "mb-4",
+                    message.from === "user" ? "text-right" : "text-left"
+                  )}
+                >
+                  {message.answeringId && (
+                    <div className="text-sm text-gray-500 mt-1">
+                      Resposta para: {message.answeringId}
+                    </div>
+                  )}
                   <div
                     className={cn(
                       "inline-block p-2 rounded-lg",
@@ -134,6 +179,32 @@ function Chat() {
                   >
                     {message.content}
                   </div>
+                  {
+                    message.type === "question" && message.answers && message.answers.length > 0 && (
+                      <div className="mt-2 max-w-1/2">
+                        {message.answers.map((answer, answerIndex) => (
+                          <div
+                            key={answerIndex}
+                            className="bg-gray-300 p-2 rounded-lg mb-2 flex items-center gap-2 cursor-pointer"
+                            onClick={() => {
+                              if (lastMessage.id !== message.id) {
+                                return
+                              }
+
+                              handleAnswerClick(answer);
+                            }}
+                          >
+                            {
+                              lastMessage.id === message.id && (
+                                <MousePointerClick className="text-color-gray-300 size-4" />
+                              )
+                            }
+                            <span>{answer.content}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  }
                 </div>
               ))
             }
