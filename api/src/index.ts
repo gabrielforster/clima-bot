@@ -5,7 +5,6 @@ import cors from "cors";
 import { Server } from "ws";
 
 import {
-  chatController,
   handleNewConnection,
   handleWebSocketMessage,
 } from "./controllers/chat.controller";
@@ -19,34 +18,37 @@ import { OpenMeteoWeatherService } from "./services/weather/openmeteo";
 const connectionManager = new ConnectionManager();
 
 const app = express();
-const PORT = process.env.PORT ?? "3000";
+const PORT = process.env.PORT ?? "42069";
 
 app.use(cors());
 app.use(express.json());
 app.use(helmet());
 
-app.get("/metrics", async (req, res) => {
-  res.set("Content-Type", register.contentType);
-  res.end(await register.metrics());
-});
-
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   const end = requestDuration.startTimer();
+
+  // randomDelay - so request duration is not too low
+  const randomDelay = Math.floor(Math.random() * 2_000);
+  await new Promise((resolve) => setTimeout(resolve, randomDelay));
+
   res.on("finish", () => {
     end({ method: req.method, route: req.path });
   });
   next();
 });
 
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
+
 app.get("/health", (req, res) => {
   return res.status(200).json({
     status: "ok",
     message: "Server is healthy",
-    connections: connectionManager.getConnectionsCount(),
   });
 });
 
-app.use("/chat", chatController);
 app.get("/connections", (req, res) => {
   const connections = connectionManager.getAllConnections().map((conn) => ({
     currentFlow: conn.flowManager.getCurrentFlow(),
@@ -58,6 +60,13 @@ app.get("/connections", (req, res) => {
     connections,
   });
 });
+
+app.use((req, res) => {
+  res.status(418).json({
+    status: "error",
+    message: "nice try",
+  });
+})
 
 const server = app.listen(PORT, () => logger.info("server running"));
 

@@ -1,6 +1,5 @@
 
 import { randomUUID } from "node:crypto";
-import { Router } from "express";
 import { RawData } from "ws";
 import { InternalWebSocket } from "../lib/internal-ws";
 import { logger } from "../lib/logger";
@@ -14,8 +13,6 @@ import {
   handleInvalidMessage,
 } from "../flows/steps";
 import { WeatherService } from "../services/weather/interface";
-
-export const chatController = Router();
 
 export async function handleWebSocketMessage(
   ws: InternalWebSocket,
