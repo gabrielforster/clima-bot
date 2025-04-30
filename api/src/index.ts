@@ -9,7 +9,8 @@ import {
   handleNewConnection,
   handleWebSocketMessage,
 } from "./controllers/chat.controller";
-import { InternalWebSocket } from "../lib/internal-ws";
+import { InternalWebSocket } from "./lib/internal-ws";
+import { logger } from "./lib/logger";
 import { ChatRepository } from "./repositories/chat.repository";
 import { ConnectionManager } from "./connections/manager";
 import { OpenMeteoWeatherService } from "./services/weather/openmeteo";
@@ -27,7 +28,7 @@ app.use((req: Request, res: Response, next) => {
   const start = Date.now();
   res.on("finish", () => {
     const duration = Date.now() - start;
-    console.info(`${req.method} ${req.path} ${res.statusCode} - ${duration}ms`);
+    logger.info(`${req.method} ${req.path} ${res.statusCode} - ${duration}ms`);
   });
   next();
 });
@@ -53,7 +54,7 @@ app.get("/connections", (req, res) => {
   });
 });
 
-const server = app.listen(PORT, () => console.info("server running"));
+const server = app.listen(PORT, () => logger.info("server running"));
 
 const wss = new Server({ server });
 wss.on("connection", async (ws) => {
@@ -71,7 +72,7 @@ wss.on("connection", async (ws) => {
     chatRepo,
   });
 
-  console.info(
+  logger.info(
     `New connection established (${connectionId}). Total connections: ${connectionManager.getConnectionsCount()}`
   );
 
@@ -87,13 +88,13 @@ wss.on("connection", async (ws) => {
 
   ws.on("close", () => {
     connectionManager.removeConnection(connectionId);
-    console.info(
+    logger.info(
       `Connection closed (${connectionId}). Total connections: ${connectionManager.getConnectionsCount()}`
     );
   });
 
   ws.on("error", (error) => {
-    console.error(`WebSocket error on connection ${connectionId}:`, error);
+    logger.error(`WebSocket error on connection ${connectionId}:`, error);
     connectionManager.removeConnection(connectionId);
   });
 });
