@@ -1,11 +1,13 @@
 import { InternalWebSocket } from "../../lib/internal-ws";
 import { FlowManager } from "../flows/flow-manager";
 import { ChatRepository } from "../repositories/chat.repository";
+import { WeatherService } from "../services/weather/interface";
 
 export type Connection = {
   ws: InternalWebSocket;
   flowManager: FlowManager;
   chatRepo: ChatRepository;
+  weatherService: WeatherService;
 };
 
 export class ConnectionManager {
