@@ -1,7 +1,6 @@
 
 import { FlowContext, FlowStep } from "./flow-manager";
 import { SimpleMessage } from "../schemas/message";
-import { WeatherService } from "../services/weather";
 
 const MESSAGES = {
   MENU: {
@@ -55,10 +54,9 @@ export const weatherFlowSteps: FlowStep[] = [
     async execute(context, message) {
       if (!message) return;
 
-      const weatherService = new WeatherService();
-      const weather = await weatherService.getWeather(message.content);
+      const temperature = await context.weatherService.getWeather(message.content);
 
-      if (!weather) {
+      if (!temperature) {
         const errorMsg = context.chatRepo.addMessage(
           {
             type: "error",
@@ -73,7 +71,7 @@ export const weatherFlowSteps: FlowStep[] = [
       const weatherMsg = context.chatRepo.addMessage(
         {
           type: "text",
-          content: `Clima em ${message.content}: ${weather.temperature}ºC, ${weather.condition}`,
+          content: `Clima em ${message.content}: ${temperature}ºC`,
         },
         "system"
       );

@@ -12,6 +12,7 @@ import {
   exitFlowSteps,
   handleInvalidMessage,
 } from "../flows/steps";
+import { WeatherService } from "../services/weather/interface";
 
 export const chatController = Router();
 
@@ -36,7 +37,7 @@ export async function handleWebSocketMessage(
 
 export async function handleNewConnection(
   ws: InternalWebSocket,
-  { chatRepo }: { chatRepo: ChatRepository }
+  { chatRepo, weatherService }: { chatRepo: ChatRepository, weatherService: WeatherService }
 ) {
   const connectionId = randomUUID();
 
@@ -44,6 +45,7 @@ export async function handleNewConnection(
     {
       ws,
       chatRepo,
+      weatherService,
       currentFlow: "mainFlow",
       connectionId,
     },

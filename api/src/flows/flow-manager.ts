@@ -2,10 +2,12 @@
 import { InternalWebSocket } from "../../lib/internal-ws";
 import { ChatRepository } from "../repositories/chat.repository";
 import { Message } from "../schemas/message";
+import { WeatherService } from "../services/weather/interface";
 
 export type FlowContext = {
   ws: InternalWebSocket;
   chatRepo: ChatRepository;
+  weatherService: WeatherService;
   currentFlow: string;
   connectionId: string;
 };
@@ -25,6 +27,10 @@ export class FlowManager {
 
   registerFlow(name: string, steps: FlowStep[]) {
     this.flows[name] = steps;
+  }
+
+  getCurrentFlow() {
+    return this.context.currentFlow;
   }
 
   async startFlow(flowName: string) {

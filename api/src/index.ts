@@ -12,6 +12,7 @@ import {
 import { InternalWebSocket } from "../lib/internal-ws";
 import { ChatRepository } from "./repositories/chat.repository";
 import { ConnectionManager } from "./connections/manager";
+import { OpenMeteoWeatherService } from "./services/weather/openmeteo";
 
 const connectionManager = new ConnectionManager();
 
@@ -59,11 +60,13 @@ wss.on("connection", async (ws) => {
   const connectionId = randomUUID();
   const internalWebSocket = new InternalWebSocket(ws);
   const chatRepo = new ChatRepository();
+  const weatherService = new OpenMeteoWeatherService()
 
-  const flowManager = await handleNewConnection(internalWebSocket, { chatRepo });
+  const flowManager = await handleNewConnection(internalWebSocket, { chatRepo, weatherService });
 
   connectionManager.addConnection(connectionId, {
     ws: internalWebSocket,
+    weatherService,
     flowManager,
     chatRepo,
   });
