@@ -8,6 +8,7 @@ interface InternalMessage {
   id?: string;
   from: "system" | "user";
   content: string;
+  error?: string;
   type: MessageType;
   identifier?: string;
   answeringId?: string;
@@ -146,7 +147,7 @@ function Chat() {
   const connectWebSocket = () => {
     if (ws.current?.readyState === WebSocket.OPEN) return;
 
-    ws.current = new WebSocket("ws://localhost:3000");
+    ws.current = new WebSocket(import.meta.env.DEV ? "ws://localhost:3000" : "ws://localhost:42069");
     ws.current.binaryType = "arraybuffer";
 
     ws.current.addEventListener("open", handleWebSocketOpen);

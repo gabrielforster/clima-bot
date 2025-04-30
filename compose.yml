@@ -1,6 +1,26 @@
 version: "3.8"
 
 services:
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    ports:
+      - "4173:4173"
+    environment:
+      - NODE_ENV=production
+    network_mode: host
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "42069:42069"
+    environment:
+      - NODE_ENV=production
+    network_mode: host
+
   prometheus:
     image: prom/prometheus:latest
     volumes:

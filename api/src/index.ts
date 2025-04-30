@@ -18,7 +18,7 @@ import { OpenMeteoWeatherService } from "./services/weather/openmeteo";
 const connectionManager = new ConnectionManager();
 
 const app = express();
-const PORT = process.env.PORT ?? "42069";
+const PORT = 42069;
 
 app.use(cors());
 app.use(express.json());
@@ -43,7 +43,7 @@ app.get("/metrics", async (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  return res.status(200).json({
+  res.status(200).json({
     status: "ok",
     message: "Server is healthy",
   });
@@ -55,7 +55,7 @@ app.get("/connections", (req, res) => {
     messagesCount: conn.chatRepo.getMessages().length,
   }));
 
-  return res.json({
+  res.json({
     totalConnections: connectionManager.getConnectionsCount(),
     connections,
   });
@@ -68,7 +68,7 @@ app.use((req, res) => {
   });
 })
 
-const server = app.listen(PORT, () => logger.info("server running"));
+const server = app.listen(PORT, "0.0.0.0", () => logger.info("server running"));
 
 const wss = new Server({ server });
 wss.on("connection", async (ws) => {
