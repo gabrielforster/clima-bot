@@ -11,6 +11,7 @@ import {
 } from "./controllers/chat.controller";
 import { InternalWebSocket } from "./lib/internal-ws";
 import { logger } from "./lib/logger";
+import { register, requestDuration } from "./lib/metrics";
 import { ChatRepository } from "./repositories/chat.repository";
 import { ConnectionManager } from "./connections/manager";
 import { OpenMeteoWeatherService } from "./services/weather/openmeteo";
@@ -24,11 +25,15 @@ app.use(cors());
 app.use(express.json());
 app.use(helmet());
 
-app.use((req: Request, res: Response, next) => {
-  const start = Date.now();
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
+
+app.use((req, res, next) => {
+  const end = requestDuration.startTimer();
   res.on("finish", () => {
-    const duration = Date.now() - start;
-    logger.info(`${req.method} ${req.path} ${res.statusCode} - ${duration}ms`);
+    end({ method: req.method, route: req.path });
   });
   next();
 });
