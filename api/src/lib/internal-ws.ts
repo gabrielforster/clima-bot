@@ -1,5 +1,6 @@
 
 import { WebSocket } from "ws"
+import { logger } from "./logger"
 
 export class InternalWebSocket {
   constructor(readonly ws: WebSocket) { }
@@ -10,7 +11,7 @@ export class InternalWebSocket {
       const messageBuffer = Buffer.from(messageString)
       this.ws.send(messageBuffer, (err) => {
         if (err) {
-          console.error("Error sending message:", err)
+          logger.error("Error sending message:", err)
           return resolve(false)
         }
 

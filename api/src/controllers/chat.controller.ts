@@ -1,8 +1,8 @@
 
 import { randomUUID } from "node:crypto";
-import { Router } from "express";
 import { RawData } from "ws";
-import { InternalWebSocket } from "../../lib/internal-ws";
+import { InternalWebSocket } from "../lib/internal-ws";
+import { logger } from "../lib/logger";
 import { messageSchema } from "../schemas/message";
 import { ChatRepository } from "../repositories/chat.repository";
 import { FlowManager } from "../flows/flow-manager";
@@ -13,8 +13,6 @@ import {
   handleInvalidMessage,
 } from "../flows/steps";
 import { WeatherService } from "../services/weather/interface";
-
-export const chatController = Router();
 
 export async function handleWebSocketMessage(
   ws: InternalWebSocket,
@@ -30,7 +28,7 @@ export async function handleWebSocketMessage(
 
     await flowManager.handleMessage(fullMessage);
   } catch (err) {
-    console.error("Error handling message:", err);
+    logger.error("Error handling message:", err);
     await ws.sendMessage({ type: "error", content: "Invalid message format" });
   }
 }

@@ -1,5 +1,5 @@
 
-import { InternalWebSocket } from "../../lib/internal-ws";
+import { InternalWebSocket } from "../lib/internal-ws";
 import { ChatRepository } from "../repositories/chat.repository";
 import { Message } from "../schemas/message";
 import { WeatherService } from "../services/weather/interface";

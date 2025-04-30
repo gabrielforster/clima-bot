@@ -5,11 +5,12 @@ import cors from "cors";
 import { Server } from "ws";
 
 import {
-  chatController,
   handleNewConnection,
   handleWebSocketMessage,
 } from "./controllers/chat.controller";
-import { InternalWebSocket } from "../lib/internal-ws";
+import { InternalWebSocket } from "./lib/internal-ws";
+import { logger } from "./lib/logger";
+import { register, requestDuration } from "./lib/metrics";
 import { ChatRepository } from "./repositories/chat.repository";
 import { ConnectionManager } from "./connections/manager";
 import { OpenMeteoWeatherService } from "./services/weather/openmeteo";
@@ -17,30 +18,37 @@ import { OpenMeteoWeatherService } from "./services/weather/openmeteo";
 const connectionManager = new ConnectionManager();
 
 const app = express();
-const PORT = process.env.PORT ?? "3000";
+const PORT = process.env.PORT ?? "42069";
 
 app.use(cors());
 app.use(express.json());
 app.use(helmet());
 
-app.use((req: Request, res: Response, next) => {
-  const start = Date.now();
+app.use(async (req, res, next) => {
+  const end = requestDuration.startTimer();
+
+  // randomDelay - so request duration is not too low
+  const randomDelay = Math.floor(Math.random() * 2_000);
+  await new Promise((resolve) => setTimeout(resolve, randomDelay));
+
   res.on("finish", () => {
-    const duration = Date.now() - start;
-    console.info(`${req.method} ${req.path} ${res.statusCode} - ${duration}ms`);
+    end({ method: req.method, route: req.path });
   });
   next();
+});
+
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
 });
 
 app.get("/health", (req, res) => {
   return res.status(200).json({
     status: "ok",
     message: "Server is healthy",
-    connections: connectionManager.getConnectionsCount(),
   });
 });
 
-app.use("/chat", chatController);
 app.get("/connections", (req, res) => {
   const connections = connectionManager.getAllConnections().map((conn) => ({
     currentFlow: conn.flowManager.getCurrentFlow(),
@@ -53,7 +61,14 @@ app.get("/connections", (req, res) => {
   });
 });
 
-const server = app.listen(PORT, () => console.info("server running"));
+app.use((req, res) => {
+  res.status(418).json({
+    status: "error",
+    message: "nice try",
+  });
+})
+
+const server = app.listen(PORT, () => logger.info("server running"));
 
 const wss = new Server({ server });
 wss.on("connection", async (ws) => {
@@ -71,7 +86,7 @@ wss.on("connection", async (ws) => {
     chatRepo,
   });
 
-  console.info(
+  logger.info(
     `New connection established (${connectionId}). Total connections: ${connectionManager.getConnectionsCount()}`
   );
 
@@ -87,13 +102,13 @@ wss.on("connection", async (ws) => {
 
   ws.on("close", () => {
     connectionManager.removeConnection(connectionId);
-    console.info(
+    logger.info(
       `Connection closed (${connectionId}). Total connections: ${connectionManager.getConnectionsCount()}`
     );
   });
 
   ws.on("error", (error) => {
-    console.error(`WebSocket error on connection ${connectionId}:`, error);
+    logger.error(`WebSocket error on connection ${connectionId}:`, error);
     connectionManager.removeConnection(connectionId);
   });
 });

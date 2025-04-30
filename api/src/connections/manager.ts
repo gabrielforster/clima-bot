@@ -1,4 +1,5 @@
-import { InternalWebSocket } from "../../lib/internal-ws";
+
+import { InternalWebSocket } from "../lib/internal-ws";
 import { FlowManager } from "../flows/flow-manager";
 import { ChatRepository } from "../repositories/chat.repository";
 import { WeatherService } from "../services/weather/interface";

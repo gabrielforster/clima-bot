@@ -1,3 +1,5 @@
+
+import { logger } from "../../lib/logger";
 import { WeatherService } from "./interface";
 
 const BASE_URL = "https://geocoding-api.open-meteo.com/v1/search"
@@ -36,7 +38,7 @@ export class OpenMeteoWeatherService implements WeatherService {
 
       return temperature;
     } catch (error) {
-      console.error("error fetching weather on openmeteo:", error);
+      logger.error("error fetching weather on openmeteo:", error);
       return null;
     }
   }
